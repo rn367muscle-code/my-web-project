@@ -564,6 +564,7 @@ let firstCode = null;
 let isScanning = false;
 let cooldown = false;
 let secondCooldown = false;
+let scanLoop = null;
 let history = [];
 let mode = 'camera'; // camera | manual
 
@@ -680,15 +681,48 @@ async function launchReader(deviceId) {
   isScanning = true;
   setStatus('active', firstCode ? '請掃第二個條碼' : '請掃第一個條碼');
 
+  // 高解析度 stream，一維碼需要 1080p 才能解析清楚
+  let stream;
   try {
-    await codeReader.decodeFromVideoDevice(deviceId, video, (result, err) => {
-      if (result && !cooldown && isScanning) {
-        onScan(result.getText());
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        deviceId: { exact: deviceId },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        focusMode: 'continuous'
       }
     });
-  } catch (err) {
-    handleCamError(err);
+  } catch(e) {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: deviceId } }
+      });
+    } catch(e2) {
+      handleCamError(e2);
+      return;
+    }
   }
+
+  video.srcObject = stream;
+  await video.play();
+
+  // canvas 用來截圖解碼（ZXing decodeFromCanvas 對一維碼更穩）
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  // 每 200ms 截一幀去解碼
+  scanLoop = setInterval(async () => {
+    if (!isScanning || video.readyState < 2) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    try {
+      const result = await codeReader.decodeFromCanvas(canvas);
+      if (result) onScan(result.getText());
+    } catch(e) {
+      // NotFoundException = 正常，還沒掃到
+    }
+  }, 200);
 }
 
 async function changeCamera() {
@@ -701,13 +735,23 @@ async function changeCamera() {
 
 function stopCamera() {
   isScanning = false;
+
+  if (scanLoop) { clearInterval(scanLoop); scanLoop = null; }
+
   if (codeReader) {
     try { codeReader.reset(); } catch(e) {}
     codeReader = null;
   }
+
   const container = document.getElementById('video-container');
   const video = container.querySelector('video');
-  if (video) video.remove();
+  if (video) {
+    if (video.srcObject) {
+      video.srcObject.getTracks().forEach(t => t.stop());
+      video.srcObject = null;
+    }
+    video.remove();
+  }
 
   const overlay = container.querySelector('.scan-overlay');
   if (overlay) overlay.remove();

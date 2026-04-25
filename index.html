@@ -590,12 +590,13 @@ async function startCamera() {
   document.getElementById('btn-stop').disabled = false;
 
   try {
-    // 先請求相機權限
+    // 先請求相機權限（這步會觸發瀏覽器授權視窗）
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     stream.getTracks().forEach(t => t.stop());
 
-    // 列出相機
-    const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+    // 用原生 API 列出相機（相容所有版本 @zxing）
+    const allDevices = await navigator.mediaDevices.enumerateDevices();
+    const devices = allDevices.filter(d => d.kind === 'videoinput');
     if (!devices.length) throw new Error('找不到相機裝置');
 
     const sel = document.getElementById('camera-select');

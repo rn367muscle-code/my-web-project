@@ -624,12 +624,13 @@ async function startCamera() {
 }
 
 async function launchReader(deviceId) {
-  if (codeReader) {
-    try { codeReader.reset(); } catch(e) {}
-  }
-  // 明確指定支援所有條碼格式（含一維碼 Code128/39/EAN 及 QR Code）
+  // 清除舊的
+  if (scanLoop) { clearInterval(scanLoop); scanLoop = null; }
+  if (codeReader) { try { codeReader.reset(); } catch(e) {} codeReader = null; }
+
+  // hints：開啟所有格式 + TRY_HARDER
   const hints = new Map();
-  const formats = [
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
     ZXing.BarcodeFormat.QR_CODE,
     ZXing.BarcodeFormat.CODE_128,
     ZXing.BarcodeFormat.CODE_39,
@@ -642,19 +643,16 @@ async function launchReader(deviceId) {
     ZXing.BarcodeFormat.DATA_MATRIX,
     ZXing.BarcodeFormat.PDF_417,
     ZXing.BarcodeFormat.AZTEC,
-  ];
-  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+  ]);
   hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-  codeReader = new ZXing.BrowserMultiFormatReader(hints);
+  codeReader = new ZXing.BrowserMultiFormatReader(hints, 500); // timeBetweenScansMillis=500
 
+  // 建立 video 元素
   const placeholder = document.getElementById('cam-placeholder');
   placeholder.style.display = 'none';
-
   const container = document.getElementById('video-container');
-
-  // 若video已存在則移除
   const oldVideo = container.querySelector('video');
-  if (oldVideo) oldVideo.remove();
+  if (oldVideo) { if (oldVideo.srcObject) oldVideo.srcObject.getTracks().forEach(t=>t.stop()); oldVideo.remove(); }
 
   const video = document.createElement('video');
   video.setAttribute('playsinline', '');
@@ -662,67 +660,40 @@ async function launchReader(deviceId) {
   video.setAttribute('muted', '');
   video.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
 
-  // 掃描overlay
   let overlay = container.querySelector('.scan-overlay');
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.className = 'scan-overlay';
-    overlay.innerHTML = `
-      <div class="scan-frame">
-        <div class="corner-tr"></div>
-        <div class="corner-bl"></div>
-        <div class="scan-line"></div>
-      </div>`;
+    overlay.innerHTML = `<div class="scan-frame"><div class="corner-tr"></div><div class="corner-bl"></div><div class="scan-line"></div></div>`;
     container.appendChild(overlay);
   }
-
   container.insertBefore(video, overlay);
 
   isScanning = true;
   setStatus('active', firstCode ? '請掃第二個條碼' : '請掃第一個條碼');
 
-  // 高解析度 stream，一維碼需要 1080p 才能解析清楚
-  let stream;
+  // 高解析度 stream（給一維碼用），讓 ZXing 接管這個 video
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        deviceId: { exact: deviceId },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-        focusMode: 'continuous'
-      }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
     });
+    video.srcObject = stream;
   } catch(e) {
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: { exact: deviceId } }
-      });
-    } catch(e2) {
-      handleCamError(e2);
-      return;
-    }
+    // fallback
   }
 
-  video.srcObject = stream;
-  await video.play();
-
-  // canvas 用來截圖解碼（ZXing decodeFromCanvas 對一維碼更穩）
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-
-  // 每 200ms 截一幀去解碼
-  scanLoop = setInterval(async () => {
-    if (!isScanning || video.readyState < 2) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
-    try {
-      const result = await codeReader.decodeFromCanvas(canvas);
-      if (result) onScan(result.getText());
-    } catch(e) {
-      // NotFoundException = 正常，還沒掃到
-    }
-  }, 200);
+  // 讓 ZXing 用 decodeFromVideoDevice 接管（它會自己管 RAF loop）
+  try {
+    await codeReader.decodeFromVideoDevice(deviceId, video, (result, err) => {
+      if (!isScanning) return;
+      if (result) {
+        onScan(result.getText());
+      }
+      // err 是 NotFoundException 時為正常，忽略
+    });
+  } catch(err) {
+    handleCamError(err);
+  }
 }
 
 async function changeCamera() {

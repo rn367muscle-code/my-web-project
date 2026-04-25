@@ -563,6 +563,7 @@ let currentDeviceId = null;
 let firstCode = null;
 let isScanning = false;
 let cooldown = false;
+let secondCooldown = false;
 let history = [];
 let mode = 'camera'; // camera | manual
 
@@ -625,7 +626,25 @@ async function launchReader(deviceId) {
   if (codeReader) {
     try { codeReader.reset(); } catch(e) {}
   }
-  codeReader = new ZXing.BrowserMultiFormatReader();
+  // 明確指定支援所有條碼格式（含一維碼 Code128/39/EAN 及 QR Code）
+  const hints = new Map();
+  const formats = [
+    ZXing.BarcodeFormat.QR_CODE,
+    ZXing.BarcodeFormat.CODE_128,
+    ZXing.BarcodeFormat.CODE_39,
+    ZXing.BarcodeFormat.CODE_93,
+    ZXing.BarcodeFormat.EAN_13,
+    ZXing.BarcodeFormat.EAN_8,
+    ZXing.BarcodeFormat.UPC_A,
+    ZXing.BarcodeFormat.UPC_E,
+    ZXing.BarcodeFormat.ITF,
+    ZXing.BarcodeFormat.DATA_MATRIX,
+    ZXing.BarcodeFormat.PDF_417,
+    ZXing.BarcodeFormat.AZTEC,
+  ];
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+  codeReader = new ZXing.BrowserMultiFormatReader(hints);
 
   const placeholder = document.getElementById('cam-placeholder');
   placeholder.style.display = 'none';
@@ -721,30 +740,36 @@ function handleCamError(err) {
 // =====================
 function onScan(text) {
   if (!text) return;
-  cooldown = true;
-  setTimeout(() => cooldown = false, 1200);
-
-  // 震動回饋
-  if (navigator.vibrate) navigator.vibrate(60);
 
   if (!firstCode) {
+    // 第一碼：防止同一碼連續觸發
+    if (cooldown) return;
+    cooldown = true;
+    setTimeout(() => cooldown = false, 1200);
+
+    if (navigator.vibrate) navigator.vibrate(60);
     firstCode = text;
     document.getElementById('val-a').textContent = text;
     document.getElementById('val-a').classList.remove('empty');
     document.getElementById('card-a').classList.add('has-value');
-
     setStep(2);
     setStatus('active', '✓ 第一組完成，請掃第二個');
+
   } else {
+    // 第二碼：用獨立 secondCooldown，不管內容是否與第一碼相同都能正常觸發
+    if (secondCooldown) return;
+    secondCooldown = true;
+    setTimeout(() => secondCooldown = false, 1500);
+
+    if (navigator.vibrate) navigator.vibrate(60);
     const secondCode = text;
     document.getElementById('val-b').textContent = text;
     document.getElementById('val-b').classList.remove('empty');
     document.getElementById('card-b').classList.add('has-value');
-
     setStep(3);
     doCompare(firstCode, secondCode);
 
-    // 3秒後自動重置
+    // 3.5秒後自動重置
     setTimeout(() => {
       resetScan();
       setStatus('active', '請掃第一個條碼');
@@ -876,6 +901,7 @@ function setStatus(type, msg) {
 function resetScan() {
   firstCode = null;
   cooldown = false;
+  secondCooldown = false;
 
   document.getElementById('val-a').textContent = '等待掃描';
   document.getElementById('val-a').classList.add('empty');

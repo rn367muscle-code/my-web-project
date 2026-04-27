@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>條碼比對系統</title>
 <script src="https://unpkg.com/@zxing/library@0.19.3/umd/index.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <style>
   :root {
     --bg: #0d1117;
@@ -624,37 +625,20 @@ async function startCamera() {
 }
 
 async function launchReader(deviceId) {
-  // 清除舊的
-  if (scanLoop) { clearInterval(scanLoop); scanLoop = null; }
-  if (codeReader) { try { codeReader.reset(); } catch(e) {} codeReader = null; }
+  stopStreams(); // 先清乾淨
 
-  // hints：開啟所有格式 + TRY_HARDER
   const hints = new Map();
-  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-    ZXing.BarcodeFormat.QR_CODE,
-    ZXing.BarcodeFormat.CODE_128,
-    ZXing.BarcodeFormat.CODE_39,
-    ZXing.BarcodeFormat.CODE_93,
-    ZXing.BarcodeFormat.EAN_13,
-    ZXing.BarcodeFormat.EAN_8,
-    ZXing.BarcodeFormat.UPC_A,
-    ZXing.BarcodeFormat.UPC_E,
-    ZXing.BarcodeFormat.ITF,
-    ZXing.BarcodeFormat.DATA_MATRIX,
-    ZXing.BarcodeFormat.PDF_417,
-    ZXing.BarcodeFormat.AZTEC,
-  ]);
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.AZTEC, ZXing.BarcodeFormat.PDF_417]);
   hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-  codeReader = new ZXing.BrowserMultiFormatReader(hints, 500); // timeBetweenScansMillis=500
+  codeReader = new ZXing.BrowserMultiFormatReader(hints, 300);
 
-  // 建立 video 元素
   const placeholder = document.getElementById('cam-placeholder');
   placeholder.style.display = 'none';
   const container = document.getElementById('video-container');
-  const oldVideo = container.querySelector('video');
-  if (oldVideo) { if (oldVideo.srcObject) oldVideo.srcObject.getTracks().forEach(t=>t.stop()); oldVideo.remove(); }
 
+  // 建立 video
   const video = document.createElement('video');
+  video.id = 'scan-video';
   video.setAttribute('playsinline', '');
   video.setAttribute('autoplay', '');
   video.setAttribute('muted', '');
@@ -669,31 +653,59 @@ async function launchReader(deviceId) {
   }
   container.insertBefore(video, overlay);
 
+  // Quagga 需要一個 div 容器
+  let quaggaDiv = document.getElementById('quagga-container');
+  if (!quaggaDiv) {
+    quaggaDiv = document.createElement('div');
+    quaggaDiv.id = 'quagga-container';
+    quaggaDiv.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0;';
+    container.appendChild(quaggaDiv);
+  }
+
   isScanning = true;
   setStatus('active', firstCode ? '請掃第二個條碼' : '請掃第一個條碼');
 
-  // 高解析度 stream（給一維碼用），讓 ZXing 接管這個 video
+  // ── ZXing：掃 QR Code ──
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+    await codeReader.decodeFromVideoDevice(deviceId, video, (result) => {
+      if (result && isScanning) onScan(result.getText());
     });
-    video.srcObject = stream;
   } catch(e) {
-    // fallback
+    // ZXing 啟動失敗不影響 Quagga
   }
 
-  // 讓 ZXing 用 decodeFromVideoDevice 接管（它會自己管 RAF loop）
-  try {
-    await codeReader.decodeFromVideoDevice(deviceId, video, (result, err) => {
-      if (!isScanning) return;
-      if (result) {
-        onScan(result.getText());
-      }
-      // err 是 NotFoundException 時為正常，忽略
+  // ── Quagga：掃一維碼 ──
+  // 等 video stream 穩定後再啟動
+  video.addEventListener('loadedmetadata', () => {
+    Quagga.init({
+      inputStream: {
+        type: 'LiveStream',
+        target: quaggaDiv,
+        constraints: {
+          deviceId: deviceId,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'environment'
+        },
+      },
+      locator: { patchSize: 'medium', halfSample: false },
+      numOfWorkers: 2,
+      frequency: 10,
+      decoder: {
+        readers: ['code_128_reader', 'code_39_reader', 'code_93_reader', 'ean_reader', 'ean_8_reader', 'upc_reader', 'i2of5_reader']
+      },
+      locate: true
+    }, (err) => {
+      if (err) { console.warn('Quagga init error:', err); return; }
+      Quagga.start();
     });
-  } catch(err) {
-    handleCamError(err);
-  }
+
+    Quagga.onDetected((data) => {
+      if (!isScanning) return;
+      const code = data.result.codeResult.code;
+      if (code) onScan(code);
+    });
+  }, { once: true });
 }
 
 async function changeCamera() {
@@ -704,29 +716,24 @@ async function changeCamera() {
   }
 }
 
-function stopCamera() {
-  isScanning = false;
-
+function stopStreams() {
   if (scanLoop) { clearInterval(scanLoop); scanLoop = null; }
-
-  if (codeReader) {
-    try { codeReader.reset(); } catch(e) {}
-    codeReader = null;
-  }
+  if (codeReader) { try { codeReader.reset(); } catch(e) {} codeReader = null; }
+  try { Quagga.stop(); } catch(e) {}
 
   const container = document.getElementById('video-container');
   const video = container.querySelector('video');
   if (video) {
-    if (video.srcObject) {
-      video.srcObject.getTracks().forEach(t => t.stop());
-      video.srcObject = null;
-    }
+    if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
     video.remove();
   }
-
   const overlay = container.querySelector('.scan-overlay');
   if (overlay) overlay.remove();
+}
 
+function stopCamera() {
+  isScanning = false;
+  stopStreams();
   document.getElementById('cam-placeholder').style.display = 'flex';
   document.getElementById('btn-start').disabled = false;
   document.getElementById('btn-stop').disabled = true;

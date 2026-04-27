@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>條碼比對系統</title>
 <script src="https://unpkg.com/@zxing/library@0.19.3/umd/index.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <style>
   :root {
     --bg: #0d1117;
@@ -559,15 +558,16 @@
 // =====================
 // 狀態管理
 // =====================
-let codeReader = null;
 let currentDeviceId = null;
 let firstCode = null;
 let isScanning = false;
-let cooldown = false;
-let secondCooldown = false;
 let scanLoop = null;
+let activeStream = null;
+let lastScanned = '';       // 上一個掃到的值
+let lastScannedTime = 0;    // 上次掃到的時間
+let waitingSecond = false;  // 是否在等第二個
 let history = [];
-let mode = 'camera'; // camera | manual
+let mode = 'camera';
 
 // =====================
 // 模式切換
@@ -587,17 +587,14 @@ function switchMode(m) {
 async function startCamera() {
   hideResult();
   resetScan();
-
   setStatus('active', '初始化中...');
   document.getElementById('btn-start').disabled = true;
   document.getElementById('btn-stop').disabled = false;
 
   try {
-    // 先請求相機權限（這步會觸發瀏覽器授權視窗）
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     stream.getTracks().forEach(t => t.stop());
 
-    // 用原生 API 列出相機（相容所有版本 @zxing）
     const allDevices = await navigator.mediaDevices.enumerateDevices();
     const devices = allDevices.filter(d => d.kind === 'videoinput');
     if (!devices.length) throw new Error('找不到相機裝置');
@@ -611,36 +608,30 @@ async function startCamera() {
       sel.appendChild(opt);
     });
 
-    // 優先選後置鏡頭
     const back = devices.find(d => /back|rear|environment/i.test(d.label));
     const chosen = back || devices[devices.length - 1];
     sel.value = chosen.deviceId;
     currentDeviceId = chosen.deviceId;
 
     await launchReader(currentDeviceId);
-
   } catch (err) {
     handleCamError(err);
   }
 }
 
+// =====================
+// 核心掃描引擎
+// 單一 stream + canvas 截圖 + ZXing 全格式解碼
+// =====================
 async function launchReader(deviceId) {
-  stopStreams(); // 先清乾淨
+  stopStreams();
 
-  const hints = new Map();
-  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.AZTEC, ZXing.BarcodeFormat.PDF_417]);
-  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-  codeReader = new ZXing.BrowserMultiFormatReader(hints, 300);
-
-  const placeholder = document.getElementById('cam-placeholder');
-  placeholder.style.display = 'none';
   const container = document.getElementById('video-container');
+  document.getElementById('cam-placeholder').style.display = 'none';
 
   // 建立 video
   const video = document.createElement('video');
-  video.id = 'scan-video';
   video.setAttribute('playsinline', '');
-  video.setAttribute('autoplay', '');
   video.setAttribute('muted', '');
   video.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
 
@@ -653,80 +644,96 @@ async function launchReader(deviceId) {
   }
   container.insertBefore(video, overlay);
 
-  // Quagga 需要一個 div 容器
-  let quaggaDiv = document.getElementById('quagga-container');
-  if (!quaggaDiv) {
-    quaggaDiv = document.createElement('div');
-    quaggaDiv.id = 'quagga-container';
-    quaggaDiv.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0;';
-    container.appendChild(quaggaDiv);
-  }
-
-  isScanning = true;
-  setStatus('active', firstCode ? '請掃第二個條碼' : '請掃第一個條碼');
-
-  // ── ZXing：掃 QR Code ──
+  // 開啟高解析度 stream
   try {
-    await codeReader.decodeFromVideoDevice(deviceId, video, (result) => {
-      if (result && isScanning) onScan(result.getText());
+    activeStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        deviceId: { exact: deviceId },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      }
     });
   } catch(e) {
-    // ZXing 啟動失敗不影響 Quagga
+    activeStream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: deviceId } }
+    });
   }
 
-  // ── Quagga：掃一維碼 ──
-  // 等 video stream 穩定後再啟動
-  video.addEventListener('loadedmetadata', () => {
-    Quagga.init({
-      inputStream: {
-        type: 'LiveStream',
-        target: quaggaDiv,
-        constraints: {
-          deviceId: deviceId,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'environment'
-        },
-      },
-      locator: { patchSize: 'medium', halfSample: false },
-      numOfWorkers: 2,
-      frequency: 10,
-      decoder: {
-        readers: ['code_128_reader', 'code_39_reader', 'code_93_reader', 'ean_reader', 'ean_8_reader', 'upc_reader', 'i2of5_reader']
-      },
-      locate: true
-    }, (err) => {
-      if (err) { console.warn('Quagga init error:', err); return; }
-      Quagga.start();
-    });
+  video.srcObject = activeStream;
+  await new Promise(res => { video.onloadedmetadata = res; });
+  video.play();
 
-    Quagga.onDetected((data) => {
-      if (!isScanning) return;
-      const code = data.result.codeResult.code;
-      if (code) onScan(code);
-    });
-  }, { once: true });
+  isScanning = true;
+  setStatus('active', '請掃第一個條碼');
+
+  // ZXing hints — 所有格式全開 + TRY_HARDER
+  const hints = new Map([
+    [ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXing.BarcodeFormat.QR_CODE,
+      ZXing.BarcodeFormat.CODE_128,
+      ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.CODE_93,
+      ZXing.BarcodeFormat.EAN_13,
+      ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.UPC_A,
+      ZXing.BarcodeFormat.UPC_E,
+      ZXing.BarcodeFormat.ITF,
+      ZXing.BarcodeFormat.DATA_MATRIX,
+      ZXing.BarcodeFormat.PDF_417,
+      ZXing.BarcodeFormat.AZTEC,
+    ]],
+    [ZXing.DecodeHintType.TRY_HARDER, true],
+  ]);
+  const reader = new ZXing.MultiFormatReader();
+  reader.setHints(hints);
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  // 每 250ms 截一幀解碼
+  scanLoop = setInterval(() => {
+    if (!isScanning || video.readyState < 2 || video.paused) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+
+    try {
+      const lum = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+      const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+      const result = reader.decode(bmp);
+      if (result) {
+        const text = result.getText();
+        const now = Date.now();
+
+        // 防重複：同一個值 2 秒內不重複觸發
+        // 但如果是第二個碼（waitingSecond），不管什麼值都接受
+        if (!waitingSecond && text === lastScanned && now - lastScannedTime < 2000) return;
+        if (waitingSecond && text === lastScanned && now - lastScannedTime < 800) return;
+
+        lastScanned = text;
+        lastScannedTime = now;
+        onScan(text);
+      }
+    } catch(e) {
+      // NotFoundException = 正常，還沒掃到
+    }
+  }, 250);
 }
 
 async function changeCamera() {
   const sel = document.getElementById('camera-select');
   currentDeviceId = sel.value;
-  if (isScanning && currentDeviceId) {
-    await launchReader(currentDeviceId);
-  }
+  if (isScanning && currentDeviceId) await launchReader(currentDeviceId);
 }
 
 function stopStreams() {
   if (scanLoop) { clearInterval(scanLoop); scanLoop = null; }
-  if (codeReader) { try { codeReader.reset(); } catch(e) {} codeReader = null; }
-  try { Quagga.stop(); } catch(e) {}
+  if (activeStream) { activeStream.getTracks().forEach(t => t.stop()); activeStream = null; }
 
   const container = document.getElementById('video-container');
   const video = container.querySelector('video');
-  if (video) {
-    if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
-    video.remove();
-  }
+  if (video) { video.srcObject = null; video.remove(); }
   const overlay = container.querySelector('.scan-overlay');
   if (overlay) overlay.remove();
 }
@@ -741,17 +748,11 @@ function stopCamera() {
 }
 
 function handleCamError(err) {
-  console.error(err);
   let msg = '相機錯誤';
-  if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-    msg = '⚠ 請允許相機權限（設定→瀏覽器→相機）';
-  } else if (err.name === 'NotFoundError') {
-    msg = '找不到相機，請改用手動輸入';
-  } else if (err.name === 'NotReadableError') {
-    msg = '相機被其他程式佔用';
-  } else {
-    msg = err.message || '未知錯誤';
-  }
+  if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') msg = '⚠ 請允許相機權限（設定→瀏覽器→相機）';
+  else if (err.name === 'NotFoundError') msg = '找不到相機，請改用手動輸入';
+  else if (err.name === 'NotReadableError') msg = '相機被其他程式佔用';
+  else msg = err.message || '未知錯誤';
   setStatus('error', msg);
   document.getElementById('btn-start').disabled = false;
   document.getElementById('btn-stop').disabled = true;
@@ -762,36 +763,23 @@ function handleCamError(err) {
 // =====================
 function onScan(text) {
   if (!text) return;
+  if (navigator.vibrate) navigator.vibrate(60);
 
   if (!firstCode) {
-    // 第一碼：防止同一碼連續觸發
-    if (cooldown) return;
-    cooldown = true;
-    setTimeout(() => cooldown = false, 1200);
-
-    if (navigator.vibrate) navigator.vibrate(60);
     firstCode = text;
+    waitingSecond = true;
     document.getElementById('val-a').textContent = text;
     document.getElementById('val-a').classList.remove('empty');
     document.getElementById('card-a').classList.add('has-value');
     setStep(2);
     setStatus('active', '✓ 第一組完成，請掃第二個');
-
   } else {
-    // 第二碼：用獨立 secondCooldown，不管內容是否與第一碼相同都能正常觸發
-    if (secondCooldown) return;
-    secondCooldown = true;
-    setTimeout(() => secondCooldown = false, 1500);
-
-    if (navigator.vibrate) navigator.vibrate(60);
-    const secondCode = text;
+    waitingSecond = false;
     document.getElementById('val-b').textContent = text;
     document.getElementById('val-b').classList.remove('empty');
     document.getElementById('card-b').classList.add('has-value');
     setStep(3);
-    doCompare(firstCode, secondCode);
-
-    // 3.5秒後自動重置
+    doCompare(firstCode, text);
     setTimeout(() => {
       resetScan();
       setStatus('active', '請掃第一個條碼');
@@ -922,8 +910,9 @@ function setStatus(type, msg) {
 // =====================
 function resetScan() {
   firstCode = null;
-  cooldown = false;
-  secondCooldown = false;
+  waitingSecond = false;
+  lastScanned = '';
+  lastScannedTime = 0;
 
   document.getElementById('val-a').textContent = '等待掃描';
   document.getElementById('val-a').classList.add('empty');

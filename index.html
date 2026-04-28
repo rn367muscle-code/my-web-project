@@ -790,10 +790,33 @@ function onScan(text) {
 // =====================
 // 比對核心
 // =====================
-function doCompare(a, b) {
-  const isMatch = a.trim() === b.trim();
+// 從各種格式的條碼內容提取料號
+function extractPartNo(text) {
+  if (!text) return '';
+  text = text.trim();
+  
+  // 格式1：ERP QR（含分隔符 {）
+  // YP31-26030018{10CP00001N-0003{3000{PCS{2026/03/03{B2-2-3
+  // 取第二個欄位（[1]）
+  if (text.includes('{')) {
+    const parts = text.split('{');
+    return parts[1].trim();
+  }
+  
+  // 格式2：純料號（自己列印的 QR 或一維碼）
+  // 10CP00001N-0003
+  return text;
+}
 
-  showResult(isMatch, a, b);
+function doCompare(a, b) {
+  // 提取兩邊的料號
+  const partNoA = extractPartNo(a);
+  const partNoB = extractPartNo(b);
+  
+  // 比對料號
+  const isMatch = partNoA === partNoB && partNoA !== '';
+
+  showResult(isMatch, partNoA, a, b);
   addHistory(a, b, isMatch);
 
   if (isMatch) {
@@ -805,18 +828,23 @@ function doCompare(a, b) {
   }
 }
 
-function showResult(isMatch, a, b) {
+function showResult(isMatch, partNo, rawA, rawB) {
   const box = document.getElementById('result-box');
   box.className = 'result-box show ' + (isMatch ? 'match' : 'no-match');
   document.getElementById('result-icon').textContent = isMatch ? '✓' : '✗';
   document.getElementById('result-text').textContent = isMatch ? 'MATCH ─ 相符' : 'NO MATCH ─ 不符';
 
   if (!isMatch) {
-    // 顯示哪裡不同
-    const diff = getDiffHint(a, b);
-    document.getElementById('result-sub').textContent = diff;
+    const partNoA = extractPartNo(rawA);
+    const partNoB = extractPartNo(rawB);
+    
+    if (partNoA === '' || partNoB === '') {
+      document.getElementById('result-sub').textContent = '條碼格式錯誤，無法解析';
+    } else {
+      document.getElementById('result-sub').textContent = `料號不符 (A: ${partNoA} vs B: ${partNoB})`;
+    }
   } else {
-    document.getElementById('result-sub').textContent = `內容：${a}`;
+    document.getElementById('result-sub').textContent = `✓ 料號：${partNo}`;
   }
 }
 

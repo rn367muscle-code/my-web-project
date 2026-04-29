@@ -558,14 +558,11 @@
 // =====================
 // 狀態管理
 // =====================
-let currentDeviceId = null;
 let firstCode = null;
 let isScanning = false;
-let scanLoop = null;
 let activeStream = null;
 let lastScanned = '';       // 上一個掃到的值
 let lastScannedTime = 0;    // 上次掃到的時間
-let waitingSecond = false;  // 是否在等第二個
 let history = [];
 let mode = 'camera';
 
@@ -706,10 +703,15 @@ async function launchReader(deviceId) {
         const text = result.getText();
         const now = Date.now();
 
-        // 防重複：同一個值 2 秒內不重複觸發
-        // 但如果是第二個碼（waitingSecond），不管什麼值都接受
-        if (!waitingSecond && text === lastScanned && now - lastScannedTime < 2000) return;
-        if (waitingSecond && text === lastScanned && now - lastScannedTime < 800) return;
+        // 防重複邏輯：
+        // 第一碼：同一個碼連續掃到時，2秒內不重複觸發
+        // 第二碼：只要時間間隔 > 1.5秒，新碼都接受（允許相同料號的不同來源）
+        const timeSinceLastScan = now - lastScannedTime;
+        
+        if (text === lastScanned) {
+          // 同一個碼
+          if (timeSinceLastScan < 1500) return; // 1.5秒內不重複
+        }
 
         lastScanned = text;
         lastScannedTime = now;
@@ -766,20 +768,22 @@ function onScan(text) {
   if (navigator.vibrate) navigator.vibrate(60);
 
   if (!firstCode) {
+    // 第一個碼
     firstCode = text;
-    waitingSecond = true;
     document.getElementById('val-a').textContent = text;
     document.getElementById('val-a').classList.remove('empty');
     document.getElementById('card-a').classList.add('has-value');
     setStep(2);
     setStatus('active', '✓ 第一組完成，請掃第二個');
   } else {
-    waitingSecond = false;
+    // 第二個碼
     document.getElementById('val-b').textContent = text;
     document.getElementById('val-b').classList.remove('empty');
     document.getElementById('card-b').classList.add('has-value');
     setStep(3);
     doCompare(firstCode, text);
+    
+    // 3.5秒後重置準備下一組
     setTimeout(() => {
       resetScan();
       setStatus('active', '請掃第一個條碼');
@@ -938,7 +942,6 @@ function setStatus(type, msg) {
 // =====================
 function resetScan() {
   firstCode = null;
-  waitingSecond = false;
   lastScanned = '';
   lastScannedTime = 0;
 

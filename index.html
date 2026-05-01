@@ -9,13 +9,11 @@
   :root {
     --bg: #0d1117;
     --surface: #161b22;
-    --surface2: #1f2937;
     --border: #30363d;
     --accent: #00d9ff;
     --accent2: #ff6b35;
     --success: #22c55e;
     --error: #ef4444;
-    --warning: #f59e0b;
     --text: #e6edf3;
     --text-muted: #7d8590;
     --radius: 12px;
@@ -24,28 +22,16 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
     padding: 16px;
-    overflow-x: hidden;
   }
 
-  /* 頂部標題 */
   .header {
     text-align: center;
     padding: 20px 0 16px;
-    position: relative;
-  }
-  .header::after {
-    content: '';
-    display: block;
-    width: 60px;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    margin: 10px auto 0;
-    border-radius: 2px;
   }
   .header h1 {
     font-size: 20px;
@@ -60,7 +46,6 @@
     letter-spacing: 1px;
   }
 
-  /* 模式切換 */
   .mode-switch {
     display: flex;
     background: var(--surface);
@@ -78,21 +63,18 @@
     font-family: inherit;
     font-size: 13px;
     cursor: pointer;
-    transition: all 0.2s;
     background: transparent;
     color: var(--text-muted);
     letter-spacing: 1px;
+    transition: all 0.2s;
   }
   .mode-btn.active {
     background: var(--accent);
     color: #000;
     font-weight: bold;
-    box-shadow: 0 0 12px rgba(0,217,255,0.3);
   }
 
-  /* 掃描區 */
   .scanner-wrap {
-    position: relative;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -109,8 +91,8 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    display: block;
   }
+
   .scan-overlay {
     position: absolute;
     inset: 0;
@@ -120,66 +102,31 @@
     pointer-events: none;
   }
   .scan-frame {
-    width: 200px;
-    height: 200px;
+    width: 160px;
+    height: 160px;
     position: relative;
-  }
-  .scan-frame::before,
-  .scan-frame::after {
-    content: '';
-    position: absolute;
-    width: 30px;
-    height: 30px;
-    border-color: var(--accent);
-    border-style: solid;
-  }
-  .scan-frame::before {
-    top: 0; left: 0;
-    border-width: 3px 0 0 3px;
-    border-radius: 4px 0 0 0;
-  }
-  .scan-frame::after {
-    bottom: 0; right: 0;
-    border-width: 0 3px 3px 0;
-    border-radius: 0 0 4px 0;
-  }
-  .scan-frame .corner-tr,
-  .scan-frame .corner-bl {
-    position: absolute;
-    width: 30px;
-    height: 30px;
-    border-color: var(--accent);
-    border-style: solid;
-  }
-  .scan-frame .corner-tr {
-    top: 0; right: 0;
-    border-width: 3px 3px 0 0;
-    border-radius: 0 4px 0 0;
-  }
-  .scan-frame .corner-bl {
-    bottom: 0; left: 0;
-    border-width: 0 0 3px 3px;
-    border-radius: 0 0 0 4px;
+    border: 3px solid var(--accent);
+    border-radius: 8px;
   }
   .scan-line {
     position: absolute;
-    left: 4px; right: 4px;
+    left: 0;
+    right: 0;
     height: 2px;
     background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    animation: scanline 2s linear infinite;
+    animation: scanline 2s infinite;
     top: 0;
   }
   @keyframes scanline {
-    0% { top: 4px; opacity: 1; }
+    0% { top: 0; opacity: 1; }
     90% { opacity: 1; }
-    100% { top: calc(100% - 4px); opacity: 0; }
+    100% { top: 100%; opacity: 0; }
   }
 
   .scanner-status {
     padding: 10px 14px;
     font-size: 12px;
     color: var(--text-muted);
-    letter-spacing: 1px;
     border-top: 1px solid var(--border);
     display: flex;
     align-items: center;
@@ -190,18 +137,16 @@
     height: 8px;
     border-radius: 50%;
     background: var(--text-muted);
-    flex-shrink: 0;
   }
   .status-dot.active {
     background: var(--accent);
     box-shadow: 0 0 6px var(--accent);
     animation: pulse 1.5s ease-in-out infinite;
   }
-  .status-dot.success { background: var(--success); box-shadow: 0 0 6px var(--success); }
-  .status-dot.error { background: var(--error); box-shadow: 0 0 6px var(--error); }
+  .status-dot.success { background: var(--success); }
+  .status-dot.error { background: var(--error); }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-  /* 控制按鈕 */
   .btn-row {
     display: flex;
     gap: 8px;
@@ -209,38 +154,30 @@
   }
   .btn {
     flex: 1;
-    padding: 13px 12px;
+    padding: 12px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     font-family: inherit;
     font-size: 13px;
-    letter-spacing: 1px;
     cursor: pointer;
-    transition: all 0.2s;
     background: var(--surface);
     color: var(--text);
     text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s;
   }
-  .btn:active { transform: scale(0.97); }
   .btn.primary {
     background: var(--accent);
     color: #000;
     border-color: var(--accent);
     font-weight: bold;
-    box-shadow: 0 0 12px rgba(0,217,255,0.2);
   }
-  .btn.danger {
-    background: var(--surface);
-    color: var(--error);
-    border-color: var(--error);
-  }
+  .btn.danger { color: var(--error); border-color: var(--error); }
   .btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
-    transform: none;
   }
 
-  /* 掃描步驟指示 */
   .step-indicator {
     display: flex;
     align-items: center;
@@ -261,26 +198,19 @@
     justify-content: center;
     font-size: 12px;
     font-weight: bold;
-    flex-shrink: 0;
     border: 2px solid var(--border);
     color: var(--text-muted);
-    transition: all 0.3s;
   }
   .step-num.active {
     border-color: var(--accent);
     color: var(--accent);
-    box-shadow: 0 0 8px rgba(0,217,255,0.3);
   }
   .step-num.done {
     background: var(--success);
     border-color: var(--success);
     color: #000;
   }
-  .step-arrow { color: var(--border); font-size: 16px; }
-  .step-label { color: var(--text-muted); font-size: 12px; letter-spacing: 1px; }
-  .step-label.active { color: var(--text); }
 
-  /* 掃描結果卡片 */
   .scan-cards {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -292,10 +222,8 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 12px;
-    transition: border-color 0.3s;
   }
   .scan-card.has-value { border-color: var(--success); }
-  .scan-card.waiting { border-color: var(--accent); box-shadow: 0 0 8px rgba(0,217,255,0.15); }
   .scan-card-label {
     font-size: 10px;
     color: var(--text-muted);
@@ -307,37 +235,34 @@
     font-size: 13px;
     color: var(--text);
     word-break: break-all;
-    line-height: 1.4;
     min-height: 20px;
   }
-  .scan-card-value.empty { color: var(--text-muted); font-style: italic; }
+  .scan-card-value.empty {
+    color: var(--text-muted);
+    font-style: italic;
+  }
 
-  /* 比對結果 */
   .result-box {
     padding: 16px;
     border-radius: var(--radius);
     text-align: center;
     margin-bottom: 12px;
     border: 2px solid transparent;
-    transition: all 0.4s;
     display: none;
   }
   .result-box.show { display: block; }
   .result-box.match {
     background: rgba(34,197,94,0.1);
     border-color: var(--success);
-    box-shadow: 0 0 20px rgba(34,197,94,0.2);
   }
   .result-box.no-match {
     background: rgba(239,68,68,0.1);
     border-color: var(--error);
-    box-shadow: 0 0 20px rgba(239,68,68,0.2);
   }
   .result-icon { font-size: 36px; margin-bottom: 8px; }
   .result-text { font-size: 18px; font-weight: bold; letter-spacing: 2px; }
-  .result-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; letter-spacing: 1px; }
+  .result-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
-  /* 手動輸入模式 */
   .manual-section {
     display: none;
   }
@@ -363,30 +288,9 @@
     font-size: 14px;
     color: var(--text);
     outline: none;
-    transition: border-color 0.2s;
   }
-  .input-field:focus { border-color: var(--accent); box-shadow: 0 0 8px rgba(0,217,255,0.15); }
-  .input-field::placeholder { color: var(--text-muted); }
+  .input-field:focus { border-color: var(--accent); }
 
-  /* 相機選擇 */
-  .camera-select-wrap {
-    margin-bottom: 12px;
-  }
-  #camera-select {
-    width: 100%;
-    padding: 10px 14px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    font-family: inherit;
-    font-size: 12px;
-    color: var(--text);
-    outline: none;
-    cursor: pointer;
-  }
-  #camera-select:focus { border-color: var(--accent); }
-
-  /* 歷史記錄 */
   .history-section {
     margin-top: 8px;
   }
@@ -396,15 +300,6 @@
     letter-spacing: 2px;
     text-transform: uppercase;
     margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .history-title::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
   }
   .history-list { display: flex; flex-direction: column; gap: 6px; }
   .history-item {
@@ -420,35 +315,43 @@
   }
   .history-item.match { border-left: 3px solid var(--success); }
   .history-item.no-match { border-left: 3px solid var(--error); }
-  .history-codes { color: var(--text-muted); flex: 1; overflow: hidden; }
-  .history-codes span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-codes { color: var(--text-muted); flex: 1; }
   .history-badge {
     font-size: 10px;
     padding: 3px 8px;
     border-radius: 4px;
     letter-spacing: 1px;
-    flex-shrink: 0;
     font-weight: bold;
+    flex-shrink: 0;
   }
   .history-badge.match { background: rgba(34,197,94,0.2); color: var(--success); }
   .history-badge.no-match { background: rgba(239,68,68,0.2); color: var(--error); }
   .history-time { font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
 
-  /* 相機無法使用提示 */
   .cam-placeholder {
     width: 100%;
     aspect-ratio: 4/3;
-    background: var(--surface2);
+    background: var(--surface);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 12px;
     color: var(--text-muted);
     font-size: 13px;
-    letter-spacing: 1px;
+    gap: 12px;
   }
-  .cam-placeholder svg { opacity: 0.3; }
+
+  #camera-select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
 </style>
 </head>
 <body>
@@ -458,7 +361,6 @@
   <p>條碼 / QR CODE 比對系統</p>
 </div>
 
-<!-- 模式切換 -->
 <div class="mode-switch">
   <button class="mode-btn active" id="btn-cam" onclick="switchMode('camera')">📷 相機掃描</button>
   <button class="mode-btn" id="btn-manual" onclick="switchMode('manual')">⌨️ 手動輸入</button>
@@ -466,21 +368,14 @@
 
 <!-- ========== 相機模式 ========== -->
 <div id="camera-section">
+  <select id="camera-select" onchange="changeCamera()">
+    <option value="">— 載入相機清單 —</option>
+  </select>
 
-  <!-- 相機選擇 -->
-  <div class="camera-select-wrap">
-    <select id="camera-select" onchange="changeCamera()">
-      <option value="">— 載入相機清單 —</option>
-    </select>
-  </div>
-
-  <!-- 掃描畫面 -->
   <div class="scanner-wrap">
     <div id="video-container">
       <div class="cam-placeholder" id="cam-placeholder">
-        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-          <path d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
-        </svg>
+        <span>📷</span>
         <span>點擊「啟動相機」開始</span>
       </div>
     </div>
@@ -490,48 +385,42 @@
     </div>
   </div>
 
-  <!-- 控制按鈕 -->
   <div class="btn-row">
     <button class="btn primary" id="btn-start" onclick="startCamera()">啟動相機</button>
     <button class="btn danger" id="btn-stop" onclick="stopCamera()" disabled>停止</button>
     <button class="btn" onclick="resetScan()">重置</button>
   </div>
 
-  <!-- 步驟指示 -->
   <div class="step-indicator">
-    <div class="step-num" id="step1-num">1</div>
-    <div class="step-label" id="step1-label">掃第一個</div>
-    <div class="step-arrow">→</div>
-    <div class="step-num" id="step2-num">2</div>
-    <div class="step-label" id="step2-label">掃第二個</div>
-    <div class="step-arrow">→</div>
-    <div class="step-num" id="step3-num">3</div>
-    <div class="step-label" id="step3-label">比對結果</div>
+    <div class="step-num" id="step1">1</div>
+    <span style="flex:1;text-align:center;">掃第一個</span>
+    <div class="step-num" id="step2">2</div>
+    <span style="flex:1;text-align:center;">掃第二個</span>
+    <div class="step-num" id="step3">3</div>
+    <span style="flex:1;text-align:center;">比對結果</span>
   </div>
 
-  <!-- 掃描值顯示 -->
   <div class="scan-cards">
-    <div class="scan-card" id="card-a">
+    <div class="scan-card">
       <div class="scan-card-label">第一組</div>
       <div class="scan-card-value empty" id="val-a">等待掃描</div>
     </div>
-    <div class="scan-card" id="card-b">
+    <div class="scan-card">
       <div class="scan-card-label">第二組</div>
       <div class="scan-card-value empty" id="val-b">等待掃描</div>
     </div>
   </div>
-
 </div>
 
 <!-- ========== 手動輸入模式 ========== -->
 <div class="manual-section" id="manual-section">
   <div class="input-group">
-    <label class="input-label" for="input-a">第一組條碼</label>
-    <input class="input-field" id="input-a" type="text" placeholder="輸入或貼上條碼內容" autocomplete="off" autocorrect="off">
+    <label class="input-label">第一組條碼</label>
+    <input class="input-field" id="input-a" type="text" placeholder="輸入或貼上條碼內容" autocomplete="off">
   </div>
   <div class="input-group">
-    <label class="input-label" for="input-b">第二組條碼</label>
-    <input class="input-field" id="input-b" type="text" placeholder="輸入或貼上條碼內容" autocomplete="off" autocorrect="off">
+    <label class="input-label">第二組條碼</label>
+    <input class="input-field" id="input-b" type="text" placeholder="輸入或貼上條碼內容" autocomplete="off">
   </div>
   <div class="btn-row">
     <button class="btn primary" onclick="manualCompare()">執行比對</button>
@@ -548,55 +437,94 @@
 
 <!-- 歷史記錄 -->
 <div class="history-section">
-  <div class="history-title">比對記錄</div>
+  <div class="history-title">📋 比對記錄</div>
   <div class="history-list" id="history-list">
-    <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px;">尚無記錄</div>
+    <div style="text-align:center;color:var(--text-muted);padding:12px;">尚無記錄</div>
   </div>
 </div>
 
 <script>
 // =====================
-// 狀態管理
+// 全域狀態
 // =====================
-let currentDeviceId = null;
-let scanLoop = null;
+let codeReader = null;
 let firstCode = null;
-let isScanning = false;
-let activeStream = null;
-let lastScanned = '';       // 上一個掃到的值
-let lastScannedTime = 0;    // 上次掃到的時間
+let lastScanned = '';
+let lastScannedTime = 0;
 let history = [];
-let mode = 'camera';
+
+// =====================
+// 工具函式
+// =====================
+// 從 QR 內容提取料號
+function extractPartNo(text) {
+  if (!text) return '';
+  text = text.trim();
+  
+  // ERP QR：YP31-26030018{10CP00001N-0003{3000...
+  if (text.includes('{')) {
+    const parts = text.split('{');
+    return parts[1].trim();
+  }
+  
+  // 純料號
+  return text;
+}
+
+// 比對兩個條碼
+function compare(a, b) {
+  const partNoA = extractPartNo(a);
+  const partNoB = extractPartNo(b);
+  return partNoA === partNoB && partNoA !== '';
+}
+
+// 設定狀態顯示
+function setStatus(type, msg) {
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  dot.className = 'status-dot' + (type ? ' ' + type : '');
+  txt.textContent = msg;
+}
+
+// 設定步驟指示
+function setStep(step) {
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById('step' + i);
+    if (i < step) el.className = 'step-num done';
+    else if (i === step) el.className = 'step-num active';
+    else el.className = 'step-num';
+  }
+}
 
 // =====================
 // 模式切換
 // =====================
-function switchMode(m) {
-  mode = m;
-  document.getElementById('btn-cam').classList.toggle('active', m === 'camera');
-  document.getElementById('btn-manual').classList.toggle('active', m === 'manual');
-  document.getElementById('camera-section').style.display = m === 'camera' ? 'block' : 'none';
-  document.getElementById('manual-section').classList.toggle('show', m === 'manual');
-  if (m === 'manual') { stopCamera(); hideResult(); }
+function switchMode(mode) {
+  const isCamera = mode === 'camera';
+  document.getElementById('btn-cam').classList.toggle('active', isCamera);
+  document.getElementById('btn-manual').classList.toggle('active', !isCamera);
+  document.getElementById('camera-section').style.display = isCamera ? 'block' : 'none';
+  document.getElementById('manual-section').classList.toggle('show', !isCamera);
+  if (!isCamera) stopCamera();
 }
 
 // =====================
 // 相機啟動
 // =====================
 async function startCamera() {
-  hideResult();
   resetScan();
   setStatus('active', '初始化中...');
   document.getElementById('btn-start').disabled = true;
   document.getElementById('btn-stop').disabled = false;
 
   try {
+    // 請求權限
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     stream.getTracks().forEach(t => t.stop());
 
-    const allDevices = await navigator.mediaDevices.enumerateDevices();
-    const devices = allDevices.filter(d => d.kind === 'videoinput');
-    if (!devices.length) throw new Error('找不到相機裝置');
+    // 列舉相機
+    const devices = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+    if (!devices.length) throw new Error('找不到相機');
 
     const sel = document.getElementById('camera-select');
     sel.innerHTML = '';
@@ -608,184 +536,132 @@ async function startCamera() {
     });
 
     const back = devices.find(d => /back|rear|environment/i.test(d.label));
-    const chosen = back || devices[devices.length - 1];
-    sel.value = chosen.deviceId;
-    currentDeviceId = chosen.deviceId;
+    const chosen = (back || devices[devices.length - 1]).deviceId;
+    sel.value = chosen;
 
-    await launchReader(currentDeviceId);
+    await launchReader(chosen);
   } catch (err) {
-    handleCamError(err);
+    const msg = err.name === 'NotAllowedError' ? '請允許相機權限' : err.message;
+    setStatus('error', msg);
+    document.getElementById('btn-start').disabled = false;
+    document.getElementById('btn-stop').disabled = true;
   }
 }
 
-// =====================
-// 核心掃描引擎
-// 單一 stream + canvas 截圖 + ZXing 全格式解碼
-// =====================
 async function launchReader(deviceId) {
-  stopStreams();
-
   const container = document.getElementById('video-container');
   document.getElementById('cam-placeholder').style.display = 'none';
 
   // 建立 video
-  const video = document.createElement('video');
-  video.setAttribute('playsinline', '');
-  video.setAttribute('muted', '');
-  video.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+  let video = container.querySelector('video');
+  if (!video) {
+    video = document.createElement('video');
+    video.setAttribute('playsinline', '');
+    video.setAttribute('autoplay', '');
+    video.setAttribute('muted', '');
+    video.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+    container.insertBefore(video, container.firstChild);
+  }
 
+  // 掃描框
   let overlay = container.querySelector('.scan-overlay');
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.className = 'scan-overlay';
-    overlay.innerHTML = `<div class="scan-frame"><div class="corner-tr"></div><div class="corner-bl"></div><div class="scan-line"></div></div>`;
+    overlay.innerHTML = '<div class="scan-frame"><div class="scan-line"></div></div>';
     container.appendChild(overlay);
   }
-  container.insertBefore(video, overlay);
 
-  // 開啟高解析度 stream
-  try {
-    activeStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        deviceId: { exact: deviceId },
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      }
-    });
-  } catch(e) {
-    activeStream = await navigator.mediaDevices.getUserMedia({
-      video: { deviceId: { exact: deviceId } }
-    });
-  }
-
-  video.srcObject = activeStream;
-  await new Promise(res => { video.onloadedmetadata = res; });
-  video.play();
-
-  isScanning = true;
-  setStatus('active', '請掃第一個條碼');
-
-  // ZXing hints — 所有格式全開 + TRY_HARDER
+  // ZXing 設定
   const hints = new Map([
     [ZXing.DecodeHintType.POSSIBLE_FORMATS, [
       ZXing.BarcodeFormat.QR_CODE,
       ZXing.BarcodeFormat.CODE_128,
       ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.CODE_93,
-      ZXing.BarcodeFormat.EAN_13,
-      ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.UPC_A,
-      ZXing.BarcodeFormat.UPC_E,
-      ZXing.BarcodeFormat.ITF,
-      ZXing.BarcodeFormat.DATA_MATRIX,
-      ZXing.BarcodeFormat.PDF_417,
-      ZXing.BarcodeFormat.AZTEC,
     ]],
     [ZXing.DecodeHintType.TRY_HARDER, true],
   ]);
-  const reader = new ZXing.MultiFormatReader();
-  reader.setHints(hints);
 
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  codeReader = new ZXing.BrowserMultiFormatReader(hints, 500);
+  setStatus('active', '請掃第一個條碼');
 
-  // 每 250ms 截一幀解碼
-  scanLoop = setInterval(() => {
-    if (!isScanning || video.readyState < 2 || video.paused) return;
+  try {
+    await codeReader.decodeFromVideoDevice(deviceId, video, (result) => {
+      if (!result) return;
+      
+      const text = result.getText();
+      const now = Date.now();
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
+      // 防重複：同一個碼 1.5 秒內不重複
+      if (text === lastScanned && now - lastScannedTime < 1500) return;
 
-    try {
-      const lum = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
-      const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-      const result = reader.decode(bmp);
-      if (result) {
-        const text = result.getText();
-        const now = Date.now();
-
-        // 防重複邏輯：
-        // 第一碼：同一個碼連續掃到時，2秒內不重複觸發
-        // 第二碼：只要時間間隔 > 1.5秒，新碼都接受（允許相同料號的不同來源）
-        const timeSinceLastScan = now - lastScannedTime;
-        
-        if (text === lastScanned) {
-          // 同一個碼
-          if (timeSinceLastScan < 1500) return; // 1.5秒內不重複
-        }
-
-        lastScanned = text;
-        lastScannedTime = now;
-        onScan(text);
-      }
-    } catch(e) {
-      // NotFoundException = 正常，還沒掃到
-    }
-  }, 250);
+      lastScanned = text;
+      lastScannedTime = now;
+      onScan(text);
+    });
+  } catch (err) {
+    setStatus('error', err.message);
+  }
 }
 
-async function changeCamera() {
-  const sel = document.getElementById('camera-select');
-  currentDeviceId = sel.value;
-  if (isScanning && currentDeviceId) await launchReader(currentDeviceId);
-}
-
-function stopStreams() {
-  if (scanLoop) { clearInterval(scanLoop); scanLoop = null; }
-  if (activeStream) { activeStream.getTracks().forEach(t => t.stop()); activeStream = null; }
-
-  const container = document.getElementById('video-container');
-  const video = container.querySelector('video');
-  if (video) { video.srcObject = null; video.remove(); }
-  const overlay = container.querySelector('.scan-overlay');
-  if (overlay) overlay.remove();
+function changeCamera() {
+  const deviceId = document.getElementById('camera-select').value;
+  if (deviceId && codeReader) {
+    stopCamera();
+    setTimeout(() => launchReader(deviceId), 500);
+  }
 }
 
 function stopCamera() {
-  isScanning = false;
-  stopStreams();
+  if (codeReader) {
+    try { codeReader.reset(); } catch(e) {}
+    codeReader = null;
+  }
+
+  const container = document.getElementById('video-container');
+  const video = container.querySelector('video');
+  if (video) {
+    if (video.srcObject) {
+      video.srcObject.getTracks().forEach(t => t.stop());
+      video.srcObject = null;
+    }
+  }
+
   document.getElementById('cam-placeholder').style.display = 'flex';
   document.getElementById('btn-start').disabled = false;
   document.getElementById('btn-stop').disabled = true;
   setStatus('', '已停止');
 }
 
-function handleCamError(err) {
-  let msg = '相機錯誤';
-  if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') msg = '⚠ 請允許相機權限（設定→瀏覽器→相機）';
-  else if (err.name === 'NotFoundError') msg = '找不到相機，請改用手動輸入';
-  else if (err.name === 'NotReadableError') msg = '相機被其他程式佔用';
-  else msg = err.message || '未知錯誤';
-  setStatus('error', msg);
-  document.getElementById('btn-start').disabled = false;
-  document.getElementById('btn-stop').disabled = true;
-}
-
 // =====================
 // 掃描邏輯
 // =====================
 function onScan(text) {
-  if (!text) return;
   if (navigator.vibrate) navigator.vibrate(60);
 
   if (!firstCode) {
-    // 第一個碼
     firstCode = text;
     document.getElementById('val-a').textContent = text;
     document.getElementById('val-a').classList.remove('empty');
-    document.getElementById('card-a').classList.add('has-value');
     setStep(2);
-    setStatus('active', '✓ 第一組完成，請掃第二個');
+    setStatus('active', '✓ 請掃第二個');
   } else {
-    // 第二個碼
     document.getElementById('val-b').textContent = text;
     document.getElementById('val-b').classList.remove('empty');
-    document.getElementById('card-b').classList.add('has-value');
     setStep(3);
-    doCompare(firstCode, text);
-    
-    // 3.5秒後重置準備下一組
+
+    const isMatch = compare(firstCode, text);
+    showResult(isMatch, firstCode, text);
+    addHistory(firstCode, text, isMatch);
+
+    if (isMatch) {
+      setStatus('success', '✓ 相符');
+      if (navigator.vibrate) navigator.vibrate([60, 50, 60]);
+    } else {
+      setStatus('error', '✗ 不符');
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
+    }
+
     setTimeout(() => {
       resetScan();
       setStatus('active', '請掃第一個條碼');
@@ -793,97 +669,51 @@ function onScan(text) {
   }
 }
 
-// =====================
-// 比對核心
-// =====================
-// 從各種格式的條碼內容提取料號
-function extractPartNo(text) {
-  if (!text) return '';
-  text = text.trim();
-  
-  // 格式1：ERP QR（含分隔符 {）
-  // YP31-26030018{10CP00001N-0003{3000{PCS{2026/03/03{B2-2-3
-  // 取第二個欄位（[1]）
-  if (text.includes('{')) {
-    const parts = text.split('{');
-    return parts[1].trim();
-  }
-  
-  // 格式2：純料號（自己列印的 QR 或一維碼）
-  // 10CP00001N-0003
-  return text;
-}
-
-function doCompare(a, b) {
-  // 提取兩邊的料號
-  const partNoA = extractPartNo(a);
-  const partNoB = extractPartNo(b);
-  
-  // 比對料號
-  const isMatch = partNoA === partNoB && partNoA !== '';
-
-  showResult(isMatch, partNoA, a, b);
-  addHistory(a, b, isMatch);
-
-  if (isMatch) {
-    setStatus('success', '✓ 比對成功');
-    if (navigator.vibrate) navigator.vibrate([60, 50, 60]);
-  } else {
-    setStatus('error', '✗ 比對不符');
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
-  }
-}
-
-function showResult(isMatch, partNo, rawA, rawB) {
+function showResult(isMatch, a, b) {
   const box = document.getElementById('result-box');
   box.className = 'result-box show ' + (isMatch ? 'match' : 'no-match');
   document.getElementById('result-icon').textContent = isMatch ? '✓' : '✗';
   document.getElementById('result-text').textContent = isMatch ? 'MATCH ─ 相符' : 'NO MATCH ─ 不符';
-
-  if (!isMatch) {
-    const partNoA = extractPartNo(rawA);
-    const partNoB = extractPartNo(rawB);
-    
-    if (partNoA === '' || partNoB === '') {
-      document.getElementById('result-sub').textContent = '條碼格式錯誤，無法解析';
-    } else {
-      document.getElementById('result-sub').textContent = `料號不符 (A: ${partNoA} vs B: ${partNoB})`;
-    }
+  
+  if (isMatch) {
+    document.getElementById('result-sub').textContent = `料號：${extractPartNo(a)}`;
   } else {
-    document.getElementById('result-sub').textContent = `✓ 料號：${partNo}`;
+    const pnA = extractPartNo(a);
+    const pnB = extractPartNo(b);
+    document.getElementById('result-sub').textContent = `A: ${pnA} vs B: ${pnB}`;
   }
 }
 
-function hideResult() {
+function resetScan() {
+  firstCode = null;
+  lastScanned = '';
+  lastScannedTime = 0;
+  
+  document.getElementById('val-a').textContent = '等待掃描';
+  document.getElementById('val-a').classList.add('empty');
+  document.getElementById('val-b').textContent = '等待掃描';
+  document.getElementById('val-b').classList.add('empty');
   document.getElementById('result-box').className = 'result-box';
-}
-
-function getDiffHint(a, b) {
-  if (a.length !== b.length) return `長度不同（${a.length} vs ${b.length} 字元）`;
-  let diffs = 0;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) diffs++;
-  }
-  return `有 ${diffs} 個字元不同`;
+  setStep(1);
 }
 
 // =====================
-// 手動比對
+// 手動輸入
 // =====================
 function manualCompare() {
   const a = document.getElementById('input-a').value.trim();
   const b = document.getElementById('input-b').value.trim();
-  if (!a || !b) {
-    alert('請輸入兩組條碼內容');
-    return;
-  }
-  doCompare(a, b);
+  if (!a || !b) { alert('請輸入兩組條碼'); return; }
+
+  const isMatch = compare(a, b);
+  showResult(isMatch, a, b);
+  addHistory(a, b, isMatch);
 }
 
 function clearManual() {
   document.getElementById('input-a').value = '';
   document.getElementById('input-b').value = '';
-  hideResult();
+  document.getElementById('result-box').className = 'result-box';
 }
 
 // =====================
@@ -900,70 +730,19 @@ function addHistory(a, b, isMatch) {
 function renderHistory() {
   const list = document.getElementById('history-list');
   if (!history.length) {
-    list.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px;">尚無記錄</div>';
+    list.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:12px;">尚無記錄</div>';
     return;
   }
   list.innerHTML = history.map(h => `
     <div class="history-item ${h.isMatch ? 'match' : 'no-match'}">
-      <div class="history-codes">
-        <span>A: ${h.a}</span>
-        <span>B: ${h.b}</span>
-      </div>
+      <span class="history-codes">${extractPartNo(h.a)}</span>
       <span class="history-badge ${h.isMatch ? 'match' : 'no-match'}">${h.isMatch ? 'OK' : 'NG'}</span>
       <span class="history-time">${h.time}</span>
     </div>
   `).join('');
 }
 
-// =====================
-// 步驟指示
-// =====================
-function setStep(step) {
-  for (let i = 1; i <= 3; i++) {
-    const num = document.getElementById(`step${i}-num`);
-    const label = document.getElementById(`step${i}-label`);
-    if (!num) continue;
-    if (i < step) { num.className = 'step-num done'; num.textContent = '✓'; }
-    else if (i === step) { num.className = 'step-num active'; num.textContent = i; label.className = 'step-label active'; }
-    else { num.className = 'step-num'; num.textContent = i; label.className = 'step-label'; }
-  }
-}
-
-// =====================
-// 狀態顯示
-// =====================
-function setStatus(type, msg) {
-  const dot = document.getElementById('status-dot');
-  const txt = document.getElementById('status-text');
-  dot.className = 'status-dot' + (type ? ' ' + type : '');
-  txt.textContent = msg;
-}
-
-// =====================
-// 重置
-// =====================
-function resetScan() {
-  firstCode = null;
-  lastScanned = '';
-  lastScannedTime = 0;
-
-  document.getElementById('val-a').textContent = '等待掃描';
-  document.getElementById('val-a').classList.add('empty');
-  document.getElementById('val-b').textContent = '等待掃描';
-  document.getElementById('val-b').classList.add('empty');
-  document.getElementById('card-a').className = 'scan-card';
-  document.getElementById('card-b').className = 'scan-card';
-
-  hideResult();
-  setStep(1);
-
-  if (isScanning) setStatus('active', '請掃第一個條碼');
-  else setStatus('', '未啟動');
-}
-
-// =====================
 // 初始化
-// =====================
 setStep(1);
 </script>
 </body>

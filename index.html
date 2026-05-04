@@ -359,7 +359,7 @@
 <div class="header">
   <h1>BARCODE MATCH</h1>
   <p>條碼 / QR CODE 比對系統</p>
-  <div style="position:fixed;top:16px;right:16px;font-size:11px;color:var(--text-muted);letter-spacing:1px;">v1.0.0</div>
+  <div style="position:fixed;top:16px;right:16px;font-size:11px;color:var(--text-muted);letter-spacing:1px;">v1.1.0</div>
 </div>
 
 <div class="mode-switch">
@@ -450,6 +450,7 @@
 // =====================
 let codeReader = null;
 let firstCode = null;
+let isScanning = false;
 let lastScanned = '';
 let lastScannedTime = 0;
 let history = [];
@@ -540,6 +541,7 @@ async function startCamera() {
     const chosen = (back || devices[devices.length - 1]).deviceId;
     sel.value = chosen;
 
+    isScanning = true;
     await launchReader(chosen);
   } catch (err) {
     const msg = err.name === 'NotAllowedError' ? '請允許相機權限' : err.message;
@@ -550,10 +552,16 @@ async function startCamera() {
 }
 
 async function launchReader(deviceId) {
+  // 每次啟動前強制清除舊的 reader
+  if (codeReader) {
+    try { codeReader.reset(); } catch(e) {}
+    codeReader = null;
+  }
+
   const container = document.getElementById('video-container');
   document.getElementById('cam-placeholder').style.display = 'none';
 
-  // 建立 video
+  // 建立 video（只建一次）
   let video = container.querySelector('video');
   if (!video) {
     video = document.createElement('video');
@@ -564,7 +572,7 @@ async function launchReader(deviceId) {
     container.insertBefore(video, container.firstChild);
   }
 
-  // 掃描框
+  // 掃描框（只建一次）
   let overlay = container.querySelector('.scan-overlay');
   if (!overlay) {
     overlay = document.createElement('div');
@@ -573,7 +581,7 @@ async function launchReader(deviceId) {
     container.appendChild(overlay);
   }
 
-  // ZXing 設定
+  // 全新 ZXing reader
   const hints = new Map([
     [ZXing.DecodeHintType.POSSIBLE_FORMATS, [
       ZXing.BarcodeFormat.QR_CODE,
@@ -584,12 +592,12 @@ async function launchReader(deviceId) {
   ]);
 
   codeReader = new ZXing.BrowserMultiFormatReader(hints, 500);
-  setStatus('active', '請掃第一個條碼');
 
   try {
     await codeReader.decodeFromVideoDevice(deviceId, video, (result) => {
       if (!result) return;
-      
+      if (!isScanning) return;
+
       const text = result.getText();
       const now = Date.now();
 
@@ -598,22 +606,31 @@ async function launchReader(deviceId) {
 
       lastScanned = text;
       lastScannedTime = now;
-      onScan(text);
+
+      // 關鍵：立刻停止 ZXing，防止快取繼續吐舊碼
+      try { codeReader.reset(); } catch(e) {}
+      codeReader = null;
+
+      // 處理掃描結果
+      onScan(text, deviceId);
     });
   } catch (err) {
-    setStatus('error', err.message);
+    if (isScanning) setStatus('error', err.message);
   }
 }
 
 function changeCamera() {
   const deviceId = document.getElementById('camera-select').value;
-  if (deviceId && codeReader) {
-    stopCamera();
-    setTimeout(() => launchReader(deviceId), 500);
+  if (deviceId) {
+    isScanning = false;
+    if (codeReader) { try { codeReader.reset(); } catch(e) {} codeReader = null; }
+    isScanning = true;
+    launchReader(deviceId);
   }
 }
 
 function stopCamera() {
+  isScanning = false;
   if (codeReader) {
     try { codeReader.reset(); } catch(e) {}
     codeReader = null;
@@ -637,16 +654,24 @@ function stopCamera() {
 // =====================
 // 掃描邏輯
 // =====================
-function onScan(text) {
+function onScan(text, deviceId) {
   if (navigator.vibrate) navigator.vibrate(60);
 
   if (!firstCode) {
+    // 第一個碼掃完 → 重啟 ZXing 等第二個
     firstCode = text;
     document.getElementById('val-a').textContent = text;
     document.getElementById('val-a').classList.remove('empty');
     setStep(2);
     setStatus('active', '✓ 請掃第二個');
+
+    // 短暫延遲後重啟，給鏡頭移開的時間
+    setTimeout(() => {
+      if (isScanning) launchReader(deviceId);
+    }, 800);
+
   } else {
+    // 第二個碼掃完 → 比對
     document.getElementById('val-b').textContent = text;
     document.getElementById('val-b').classList.remove('empty');
     setStep(3);
@@ -663,10 +688,12 @@ function onScan(text) {
       if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
     }
 
+    // 3 秒後重置，重啟 ZXing 等下一組
     setTimeout(() => {
       resetScan();
       setStatus('active', '請掃第一個條碼');
-    }, 3500);
+      if (isScanning) launchReader(deviceId);
+    }, 3000);
   }
 }
 

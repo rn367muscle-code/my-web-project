@@ -102,8 +102,8 @@
     pointer-events: none;
   }
   .scan-frame {
-    width: 160px;
-    height: 160px;
+    width: 120px;
+    height: 120px;
     position: relative;
     border: 3px solid var(--accent);
     border-radius: 8px;
@@ -359,7 +359,7 @@
 <div class="header">
   <h1>BARCODE MATCH</h1>
   <p>條碼 / QR CODE 比對系統</p>
-  <div style="position:fixed;top:16px;right:16px;font-size:11px;color:var(--text-muted);letter-spacing:1px;">v1.1.0</div>
+  <div style="position:fixed;top:16px;right:16px;font-size:11px;color:var(--text-muted);letter-spacing:1px;">v1.2.0</div>
 </div>
 
 <div class="mode-switch">
@@ -451,8 +451,6 @@
 let codeReader = null;
 let firstCode = null;
 let isScanning = false;
-let lastScanned = '';
-let lastScannedTime = 0;
 let history = [];
 
 // =====================
@@ -552,16 +550,23 @@ async function startCamera() {
 }
 
 async function launchReader(deviceId) {
-  // 每次啟動前強制清除舊的 reader
-  if (codeReader) {
-    try { codeReader.reset(); } catch(e) {}
-    codeReader = null;
-  }
+  if (!isScanning) return;
+
+  // 每次建立全新的 reader，完全無快取
+  const hints = new Map([
+    [ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXing.BarcodeFormat.QR_CODE,
+      ZXing.BarcodeFormat.CODE_128,
+      ZXing.BarcodeFormat.CODE_39,
+    ]],
+    [ZXing.DecodeHintType.TRY_HARDER, true],
+  ]);
+  codeReader = new ZXing.BrowserMultiFormatReader(hints);
 
   const container = document.getElementById('video-container');
   document.getElementById('cam-placeholder').style.display = 'none';
 
-  // 建立 video（只建一次）
+  // video 只建一次
   let video = container.querySelector('video');
   if (!video) {
     video = document.createElement('video');
@@ -572,50 +577,34 @@ async function launchReader(deviceId) {
     container.insertBefore(video, container.firstChild);
   }
 
-  // 掃描框（只建一次）
-  let overlay = container.querySelector('.scan-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
+  // 掃描框只建一次
+  if (!container.querySelector('.scan-overlay')) {
+    const overlay = document.createElement('div');
     overlay.className = 'scan-overlay';
     overlay.innerHTML = '<div class="scan-frame"><div class="scan-line"></div></div>';
     container.appendChild(overlay);
   }
 
-  // 全新 ZXing reader
-  const hints = new Map([
-    [ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-      ZXing.BarcodeFormat.QR_CODE,
-      ZXing.BarcodeFormat.CODE_128,
-      ZXing.BarcodeFormat.CODE_39,
-    ]],
-    [ZXing.DecodeHintType.TRY_HARDER, true],
-  ]);
-
-  codeReader = new ZXing.BrowserMultiFormatReader(hints, 500);
-
   try {
-    await codeReader.decodeFromVideoDevice(deviceId, video, (result) => {
-      if (!result) return;
-      if (!isScanning) return;
+    // decodeOnceFromVideoDevice：掃到一個結果就自動停止，完全無快取
+    const result = await codeReader.decodeOnceFromVideoDevice(deviceId, video);
 
-      const text = result.getText();
-      const now = Date.now();
+    if (!isScanning) return; // 掃描期間被停止就放棄
 
-      // 防重複：同一個碼 1.5 秒內不重複
-      if (text === lastScanned && now - lastScannedTime < 1500) return;
+    const text = result.getText();
 
-      lastScanned = text;
-      lastScannedTime = now;
+    // reset reader（確保釋放）
+    try { codeReader.reset(); } catch(e) {}
+    codeReader = null;
 
-      // 關鍵：立刻停止 ZXing，防止快取繼續吐舊碼
-      try { codeReader.reset(); } catch(e) {}
-      codeReader = null;
+    onScan(text, deviceId);
 
-      // 處理掃描結果
-      onScan(text, deviceId);
-    });
   } catch (err) {
-    if (isScanning) setStatus('error', err.message);
+    if (!isScanning) return;
+    // 超時或錯誤 → 重試
+    try { if (codeReader) codeReader.reset(); } catch(e) {}
+    codeReader = null;
+    setTimeout(() => launchReader(deviceId), 200);
   }
 }
 
@@ -658,20 +647,16 @@ function onScan(text, deviceId) {
   if (navigator.vibrate) navigator.vibrate(60);
 
   if (!firstCode) {
-    // 第一個碼掃完 → 重啟 ZXing 等第二個
     firstCode = text;
     document.getElementById('val-a').textContent = text;
     document.getElementById('val-a').classList.remove('empty');
     setStep(2);
     setStatus('active', '✓ 請掃第二個');
 
-    // 短暫延遲後重啟，給鏡頭移開的時間
-    setTimeout(() => {
-      if (isScanning) launchReader(deviceId);
-    }, 800);
+    // 直接重啟等第二個碼
+    setTimeout(() => launchReader(deviceId), 300);
 
   } else {
-    // 第二個碼掃完 → 比對
     document.getElementById('val-b').textContent = text;
     document.getElementById('val-b').classList.remove('empty');
     setStep(3);
@@ -688,11 +673,11 @@ function onScan(text, deviceId) {
       if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
     }
 
-    // 3 秒後重置，重啟 ZXing 等下一組
+    // 3 秒後重置，重啟等下一組
     setTimeout(() => {
       resetScan();
       setStatus('active', '請掃第一個條碼');
-      if (isScanning) launchReader(deviceId);
+      launchReader(deviceId);
     }, 3000);
   }
 }

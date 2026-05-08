@@ -26,7 +26,6 @@
             overflow-x: hidden;
         }
 
-        /* 版本號 */
         .version {
             position: fixed;
             top: 10px;
@@ -36,15 +35,9 @@
             z-index: 100;
         }
 
-        header {
-            padding: 20px;
-            text-align: center;
-            width: 100%;
-        }
-
+        header { padding: 20px; text-align: center; width: 100%; }
         h1 { font-size: 1.2rem; margin: 0; color: var(--primary-color); letter-spacing: 1px; }
 
-        /* 步驟列 */
         .steps {
             display: flex;
             justify-content: space-around;
@@ -62,32 +55,30 @@
             border-bottom-color: var(--primary-color);
         }
 
-        /* 掃描區域 */
         #scanner-container {
             position: relative;
             width: 320px;
-            height: 240px; /* 4:3 */
+            height: 240px; 
             background: #000;
             border-radius: 8px;
             overflow: hidden;
             margin-bottom: 15px;
+            border: 1px solid #30363d;
         }
 
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+        video { width: 100%; height: 100%; object-fit: cover; }
 
+        /* 縮小掃描框至 120x120 */
         .scan-region-highlight {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 180px;
-            height: 180px;
+            width: 120px;
+            height: 120px;
             border: 2px solid var(--primary-color);
-            box-shadow: 0 0 0 500px rgba(0, 0, 0, 0.5);
+            /* 增加遮罩深度 (0.7) 幫助對焦 */
+            box-shadow: 0 0 0 500px rgba(0, 0, 0, 0.7);
             z-index: 10;
             pointer-events: none;
         }
@@ -100,7 +91,7 @@
             height: 2px;
             background-color: var(--primary-color);
             box-shadow: 0 0 8px var(--primary-color);
-            animation: scan 2s linear infinite;
+            animation: scan 1.5s linear infinite;
         }
 
         @keyframes scan {
@@ -108,7 +99,6 @@
             100% { top: 100%; }
         }
 
-        /* 控制列 */
         .controls {
             width: 90%;
             margin-bottom: 15px;
@@ -126,16 +116,10 @@
             font-size: 14px;
         }
 
-        .btn-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 10px;
-        }
-
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
         .btn-start { background: #238636; color: white; }
         .btn-stop { background: #da3633; color: white; }
 
-        /* 結果顯示 */
         .result-area {
             width: 90%;
             display: grid;
@@ -154,71 +138,32 @@
             word-break: break-all;
         }
 
-        .card-label {
-            font-size: 11px;
-            color: #8b949e;
-            margin-bottom: 5px;
-            display: block;
-        }
+        .card-label { font-size: 11px; color: #8b949e; margin-bottom: 5px; display: block; }
 
-        /* 比對結果大字 */
-        #match-status {
-            font-size: 2rem;
-            font-weight: bold;
-            margin: 10px 0;
-            text-align: center;
-        }
-
+        #match-status { font-size: 2rem; font-weight: bold; margin: 10px 0; text-align: center; }
         .match { color: var(--success-color); }
         .no-match { color: var(--error-color); }
 
-        /* 手動輸入 Tab */
-        .tabs {
-            width: 90%;
-            display: flex;
-            margin-top: 10px;
-        }
-        .tab {
-            flex: 1;
-            text-align: center;
-            padding: 10px;
-            background: var(--surface-color);
-            cursor: pointer;
-            border: 1px solid #30363d;
-        }
-        .tab.active {
-            background: #21262d;
-            border-bottom: 2px solid var(--primary-color);
-        }
+        .tabs { width: 90%; display: flex; margin-top: 10px; }
+        .tab { flex: 1; text-align: center; padding: 10px; background: var(--surface-color); cursor: pointer; border: 1px solid #30363d; }
+        .tab.active { background: #21262d; border-bottom: 2px solid var(--primary-color); }
 
         .hidden { display: none !important; }
-        .input-manual {
-            width: 90%;
-            padding: 15px 0;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        input {
-            background: var(--surface-color);
-            border: 1px solid #30363d;
-            color: white;
-            padding: 12px;
-            border-radius: 6px;
-        }
+        .input-manual { width: 90%; padding: 15px 0; display: flex; flex-direction: column; gap: 10px; }
+        input { background: var(--surface-color); border: 1px solid #30363d; color: white; padding: 12px; border-radius: 6px; }
     </style>
 </head>
 <body>
 
-    <div class="version">v1.0.0</div>
+    <div class="version">v1.0.1</div>
 
     <header>
         <h1>BARCODE MATCH</h1>
     </header>
 
     <div class="steps">
-        <div id="step1" class="step active">1. 掃描第一組</div>
-        <div id="step2" class="step">2. 掃描第二組</div>
+        <div id="step1" class="step active">1. 掃第一組</div>
+        <div id="step2" class="step">2. 掃第二組</div>
         <div id="step3" class="step">3. 比對結果</div>
     </div>
 
@@ -227,7 +172,6 @@
         <div id="tab-manual" class="tab" onclick="switchTab('manual')">手動輸入</div>
     </div>
 
-    <!-- 掃描模式 -->
     <div id="mode-scan" class="ui-mode">
         <div id="scanner-container">
             <video id="video" playsinline></video>
@@ -246,29 +190,28 @@
         </div>
     </div>
 
-    <!-- 手動模式 -->
     <div id="mode-manual" class="ui-mode hidden">
         <div class="input-manual">
-            <input type="text" id="m-input1" placeholder="輸入第一組條碼內容">
-            <input type="text" id="m-input2" placeholder="輸入第二組條碼內容">
+            <input type="text" id="m-input1" placeholder="輸入第一組條碼">
+            <input type="text" id="m-input2" placeholder="輸入第二組條碼">
             <button onclick="manualCompare()" style="background: var(--primary-color); color:white;">執行比對</button>
         </div>
     </div>
 
     <div class="result-area">
         <div class="card">
-            <span class="card-label">RESULT A (ERP/Label)</span>
-            <div id="res-a">等待掃描...</div>
+            <span class="card-label">結果 A</span>
+            <div id="res-a">等待中...</div>
         </div>
         <div class="card">
-            <span class="card-label">RESULT B (ERP/Label)</span>
-            <div id="res-b">等待掃描...</div>
+            <span class="card-label">結果 B</span>
+            <div id="res-b">等待中...</div>
         </div>
     </div>
 
     <div id="match-display" class="hidden">
         <div id="match-status"></div>
-        <div style="text-align:center; font-size: 14px; color: #8b949e;">
+        <div style="text-align:center; font-size: 14px; color: #8b949e; padding-bottom: 20px;">
             A: <span id="val-a"></span><br>
             B: <span id="val-b"></span>
         </div>
@@ -278,16 +221,13 @@
         let selectedDeviceId;
         let codeReader = null;
         let scanCount = 0;
-        let resultA = null; // 儲存提取後的料號
+        let resultA = null;
         let resultB = null;
 
-        const videoElement = document.getElementById('video');
         const videoSelect = document.getElementById('videoSource');
 
-        // 初始化設備清單
         async function initDevices() {
             try {
-                // 先取得權限
                 await navigator.mediaDevices.getUserMedia({ video: true });
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices.filter(device => device.kind === 'videoinput');
@@ -297,7 +237,6 @@
                     const option = document.createElement('option');
                     option.value = device.deviceId;
                     option.text = device.label || `Camera ${index + 1}`;
-                    // 優先選後置鏡頭 (包含 "back", "rear", "環境")
                     if (device.label.toLowerCase().includes('back') || device.label.toLowerCase().includes('rear')) {
                         option.selected = true;
                         selectedDeviceId = device.deviceId;
@@ -309,31 +248,20 @@
                     selectedDeviceId = videoDevices[0].deviceId;
                 }
             } catch (err) {
-                console.error("設備初始化失敗:", err);
-                alert("無法取得相機權限");
+                alert("相機權限開啟失敗，請檢查設定");
             }
         }
 
-        videoSelect.onchange = () => {
-            selectedDeviceId = videoSelect.value;
-            if (codeReader) {
-                stopScanner();
-                startScanner();
-            }
-        };
-
-        // 核心掃描啟動邏輯
         async function launchReader() {
-            // 每次呼叫都 new 一個全新實例
+            // 每次重新建立全新的 Reader 實例
             codeReader = new ZXing.BrowserMultiFormatReader();
             
             const hints = new Map();
-            const formats = [
+            hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
                 ZXing.BarcodeFormat.QR_CODE,
                 ZXing.BarcodeFormat.CODE_128,
                 ZXing.BarcodeFormat.CODE_39
-            ];
-            hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+            ]);
             hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
             codeReader.hints = hints;
 
@@ -341,16 +269,12 @@
                 const result = await codeReader.decodeOnceFromVideoDevice(selectedDeviceId, 'video');
                 handleScanResult(result.text);
             } catch (err) {
-                if (err && err.name !== 'NotFoundException') {
-                    console.error(err);
-                }
+                if (err && err.name !== 'NotFoundException') console.error(err);
             }
         }
 
         function handleScanResult(text) {
-            // 震動 60ms
             vibrate(60);
-            
             const partNo = extractPartNumber(text);
             
             if (scanCount === 0) {
@@ -359,9 +283,9 @@
                 document.getElementById('step1').classList.remove('active');
                 document.getElementById('step2').classList.add('active');
                 scanCount = 1;
-                // 處理完畢後，重新建立全新 reader 啟動下一次
                 stopScanner();
-                setTimeout(launchReader, 500); 
+                // 延遲一點點再啟動，確保畫面切換流暢
+                setTimeout(launchReader, 400); 
             } else if (scanCount === 1) {
                 resultB = partNo;
                 document.getElementById('res-b').innerText = text;
@@ -373,7 +297,6 @@
             }
         }
 
-        // 料號提取邏輯
         function extractPartNumber(raw) {
             if (raw.includes('{')) {
                 const parts = raw.split('{');
@@ -393,14 +316,13 @@
             if (resultA === resultB) {
                 status.innerText = "MATCH";
                 status.className = "match";
-                vibrate([60, 100, 60]); // OK 震動兩下
+                vibrate([60, 100, 60]);
             } else {
                 status.innerText = "NO MATCH";
                 status.className = "no-match";
-                vibrate([60, 100, 60, 100, 60]); // NG 震動三下
+                vibrate([60, 100, 60, 100, 60]);
             }
 
-            // 3秒後自動重置
             setTimeout(resetSystem, 3000);
         }
 
@@ -421,16 +343,13 @@
             scanCount = 0;
             resultA = null;
             resultB = null;
-            document.getElementById('res-a').innerText = "等待掃描...";
-            document.getElementById('res-b').innerText = "等待掃描...";
+            document.getElementById('res-a').innerText = "等待中...";
+            document.getElementById('res-b').innerText = "等待中...";
             document.getElementById('match-display').classList.add('hidden');
             document.getElementById('step1').classList.add('active');
             document.getElementById('step2').classList.remove('active');
             document.getElementById('step3').classList.remove('active');
-            document.getElementById('m-input1').value = "";
-            document.getElementById('m-input2').value = "";
             
-            // 如果在掃描頁面，自動重新啟動
             if (!document.getElementById('mode-scan').classList.contains('hidden')) {
                 startScanner();
             }
@@ -454,7 +373,7 @@
         function manualCompare() {
             const in1 = document.getElementById('m-input1').value;
             const in2 = document.getElementById('m-input2').value;
-            if (!in1 || !in2) return alert("請輸入完整條碼");
+            if (!in1 || !in2) return alert("請輸入完整條碼內容");
             
             resultA = extractPartNumber(in1);
             resultB = extractPartNumber(in2);
@@ -464,12 +383,9 @@
         }
 
         function vibrate(pattern) {
-            if (navigator.vibrate) {
-                navigator.vibrate(pattern);
-            }
+            if (navigator.vibrate) navigator.vibrate(pattern);
         }
 
-        // 初始化
         window.addEventListener('load', initDevices);
     </script>
 </body>

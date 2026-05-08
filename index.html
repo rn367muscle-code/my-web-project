@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BARCODE MATCH</title>
+    <title>BARCODE MATCH v1.0.2</title>
     <script src="https://unpkg.com/@zxing/library@0.19.3/umd/index.min.js"></script>
     <style>
         :root {
@@ -68,7 +68,6 @@
 
         video { width: 100%; height: 100%; object-fit: cover; }
 
-        /* 縮小掃描框至 120x120 */
         .scan-region-highlight {
             position: absolute;
             top: 50%;
@@ -77,7 +76,6 @@
             width: 120px;
             height: 120px;
             border: 2px solid var(--primary-color);
-            /* 增加遮罩深度 (0.7) 幫助對焦 */
             box-shadow: 0 0 0 500px rgba(0, 0, 0, 0.7);
             z-index: 10;
             pointer-events: none;
@@ -94,10 +92,7 @@
             animation: scan 1.5s linear infinite;
         }
 
-        @keyframes scan {
-            0% { top: 0; }
-            100% { top: 100%; }
-        }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
 
         .controls {
             width: 90%;
@@ -111,9 +106,10 @@
             background: var(--surface-color);
             color: var(--text-color);
             border: 1px solid #30363d;
-            padding: 10px;
+            padding: 12px;
             border-radius: 6px;
             font-size: 14px;
+            -webkit-appearance: none; /* iPhone Safari 下拉選單樣式修正 */
         }
 
         .btn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
@@ -139,7 +135,6 @@
         }
 
         .card-label { font-size: 11px; color: #8b949e; margin-bottom: 5px; display: block; }
-
         #match-status { font-size: 2rem; font-weight: bold; margin: 10px 0; text-align: center; }
         .match { color: var(--success-color); }
         .no-match { color: var(--error-color); }
@@ -155,7 +150,7 @@
 </head>
 <body>
 
-    <div class="version">v1.0.1</div>
+    <div class="version">v1.0.2</div>
 
     <header>
         <h1>BARCODE MATCH</h1>
@@ -174,7 +169,7 @@
 
     <div id="mode-scan" class="ui-mode">
         <div id="scanner-container">
-            <video id="video" playsinline></video>
+            <video id="video" playsinline muted></video>
             <div class="scan-region-highlight">
                 <div class="scan-line"></div>
             </div>
@@ -226,34 +221,60 @@
 
         const videoSelect = document.getElementById('videoSource');
 
+        // 改進版設備初始化
         async function initDevices() {
             try {
-                await navigator.mediaDevices.getUserMedia({ video: true });
+                // iPhone 要求必須先請求權限，後續列舉設備才會有名稱
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                // 拿到權限後立刻關閉，避免佔用
+                stream.getTracks().forEach(track => track.stop());
+
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices.filter(device => device.kind === 'videoinput');
                 
                 videoSelect.innerHTML = '';
+                let backCameraId = null;
+
                 videoDevices.forEach((device, index) => {
                     const option = document.createElement('option');
                     option.value = device.deviceId;
-                    option.text = device.label || `Camera ${index + 1}`;
-                    if (device.label.toLowerCase().includes('back') || device.label.toLowerCase().includes('rear')) {
+                    const label = device.label || `Camera ${index + 1}`;
+                    option.text = label;
+                    
+                    // 檢查是否為後置鏡頭
+                    const isBack = /back|rear|environment|後/i.test(label);
+                    if (isBack) {
+                        backCameraId = device.deviceId;
                         option.selected = true;
-                        selectedDeviceId = device.deviceId;
                     }
                     videoSelect.appendChild(option);
                 });
 
-                if (!selectedDeviceId && videoDevices.length > 0) {
-                    selectedDeviceId = videoDevices[0].deviceId;
+                // 如果沒找到關鍵字，通常 iPhone 的主鏡頭（後置）是列表的最後一個
+                if (!backCameraId && videoDevices.length > 0) {
+                    selectedDeviceId = videoDevices[videoDevices.length - 1].deviceId;
+                    videoSelect.value = selectedDeviceId;
+                } else {
+                    selectedDeviceId = backCameraId || (videoDevices[0] ? videoDevices[0].deviceId : null);
                 }
+
+                console.log("選擇的鏡頭 ID:", selectedDeviceId);
             } catch (err) {
-                alert("相機權限開啟失敗，請檢查設定");
+                console.error(err);
+                alert("無法初始化相機，請確認 Safari 權限設定");
             }
         }
 
+        videoSelect.onchange = () => {
+            selectedDeviceId = videoSelect.value;
+            if (codeReader) {
+                stopScanner();
+                startScanner();
+            }
+        };
+
         async function launchReader() {
-            // 每次重新建立全新的 Reader 實例
+            // 每次重新建立全新的 Reader 實例，確保不留快取
             codeReader = new ZXing.BrowserMultiFormatReader();
             
             const hints = new Map();
@@ -269,7 +290,9 @@
                 const result = await codeReader.decodeOnceFromVideoDevice(selectedDeviceId, 'video');
                 handleScanResult(result.text);
             } catch (err) {
-                if (err && err.name !== 'NotFoundException') console.error(err);
+                if (err && err.name !== 'NotFoundException') {
+                    console.error("掃描錯誤:", err);
+                }
             }
         }
 
@@ -284,8 +307,7 @@
                 document.getElementById('step2').classList.add('active');
                 scanCount = 1;
                 stopScanner();
-                // 延遲一點點再啟動，確保畫面切換流暢
-                setTimeout(launchReader, 400); 
+                setTimeout(launchReader, 500); 
             } else if (scanCount === 1) {
                 resultB = partNo;
                 document.getElementById('res-b').innerText = text;
@@ -327,14 +349,24 @@
         }
 
         function startScanner() {
-            if (!selectedDeviceId) return;
-            launchReader();
+            if (!selectedDeviceId) {
+                initDevices().then(() => {
+                    if (selectedDeviceId) launchReader();
+                });
+            } else {
+                launchReader();
+            }
         }
 
         function stopScanner() {
             if (codeReader) {
                 codeReader.reset();
                 codeReader = null;
+            }
+            const video = document.getElementById('video');
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
             }
         }
 
